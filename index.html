@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Agenda Profissional</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body { margin:0; font-family:Arial; background:linear-gradient(135deg,#4f46e5,#06b6d4); color:white; }
+#login { display:flex; height:100vh; justify-content:center; align-items:center; }
+.login-box { background:rgba(0,0,0,0.4); padding:30px; border-radius:15px; text-align:center; }
+.login-box input { margin:10px 0; padding:10px; width:200px; border-radius:8px; border:none; }
+.login-box button { padding:10px; width:100%; border-radius:8px; border:none; background:#22c55e; color:white; }
+
+#app { display:none; padding:15px; }
+.topo { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:20px; }
+
+button { padding:8px; border-radius:10px; border:none; cursor:pointer; }
+
+.dia { background:rgba(255,255,255,0.1); padding:15px; margin:15px 0; border-radius:15px; }
+.equipe { margin:10px 0; padding:10px; border-radius:10px; background:rgba(0,0,0,0.2); }
+.servico { display:flex; gap:5px; margin:5px 0; flex-wrap:wrap; }
+input, select { padding:6px; border-radius:8px; border:none; }
+.pendente { background:#ef4444; }
+.andamento { background:#fde68a; color:black; }
+.concluido { background:#22c55e; }
+
+/* ===== CALENDÁRIO 2 SEMANAS ===== */
+#calendarioModal {
+  display:none;
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.85);
+  z-index:1000;
+  overflow:auto;
+  padding:10px;
+  box-sizing:border-box;
+}
+#calendarioBox {
+  background:#f1f5f9;
+  color:#1f2937;
+  padding:20px;
+  border-radius:18px;
+  margin:16px auto;
+  max-width:1200px;
+  position:relative;
+}
+.calHeader {
+  text-align:center;
+  font-size:1.3em;
+  font-weight:bold;
+  color:#1e3a8a;
+  margin-bottom:8px;
+}
+.calNav {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  margin:10px 0 14px;
+}
+.calNav button {
+  background:#3b82f6;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:7px 18px;
+  font-size:0.95em;
+  cursor:pointer;
+  font-weight:bold;
+}
+.calNav button:hover { background:#1d4ed8; }
+.calNav button:disabled { background:#cbd5e1; cursor:default; }
+.calNavLabel {
+  font-size:1em;
+  font-weight:bold;
+  color:#1e3a8a;
+  min-width:180px;
+  text-align:center;
+}
+.calLegenda {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  margin:0 0 14px;
+  padding:10px;
+  background:#fff;
+  border-radius:10px;
+  border:1px solid #e2e8f0;
+}
+.calLegendaItem {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  font-size:0.78em;
+  font-weight:600;
+  color:#374151;
+}
+.calLegendaColor {
+  width:13px; height:13px;
+  border-radius:4px;
+  flex-shrink:0;
+}
+.calGrid {
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:8px;
+}
+.calDiaSemana {
+  text-align:center;
+  font-weight:bold;
+  font-size:0.82em;
+  color:#1e40af;
+  padding:7px 4px;
+  background:#dbeafe;
+  border-radius:8px;
+  border:1px solid #bfdbfe;
+}
+.calDia {
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:8px;
+  min-height:150px;
+  display:flex;
+  flex-direction:column;
+}
+.calDia.hoje { border:2px solid #3b82f6; background:#eff6ff; }
+.calDia.fimSemana { background:#f8fafc; opacity:0.7; }
+.calNumDia {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:6px;
+}
+.numeroDia {
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  font-weight:bold;
+  font-size:0.95em;
+  color:#374151;
+}
+.calDia.hoje .numeroDia { background:#3b82f6; color:#fff; }
+.nomeDiaSemana {
+  font-size:0.72em;
+  color:#94a3b8;
+  font-weight:600;
+  text-transform:uppercase;
+}
+.calServicos { display:flex; flex-direction:column; gap:4px; flex:1; }
+.calServico {
+  padding:5px 7px;
+  border-radius:7px;
+  font-size:0.74em;
+  border-left:3px solid rgba(0,0,0,0.15);
+  color:#fff;
+  line-height:1.35;
+}
+.calServico.textoDark { color:#1f2937; }
+.calServicoEquipe { font-weight:700; font-size:0.9em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.calServicoTexto { opacity:0.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.calServicoInfo { opacity:0.82; font-size:0.8em; margin-top:2px; }
+.statusBadge {
+  display:inline-block;
+  padding:1px 5px;
+  border-radius:4px;
+  background:rgba(0,0,0,0.18);
+  font-size:0.85em;
+}
+.calVazio { text-align:center; color:#cbd5e1; font-size:0.75em; font-style:italic; margin-top:10px; }
+.fecharBtn {
+  position:absolute; top:12px; right:12px;
+  background:#ef4444; color:white; border:none;
+  width:36px; height:36px; border-radius:50%;
+  cursor:pointer; font-size:1.1em; font-weight:bold;
+}
+
+/* CORES EQUIPES */
+.eq-0{background:#3b82f6}
+.eq-1{background:#10b981}
+.eq-2{background:#f59e0b}
+.eq-3{background:#ef4444}
+.eq-4{background:#8b5cf6}
+.eq-5{background:#ec4899}
+.eq-6{background:#14b8a6}
+.eq-7{background:#f97316}
+
+@media(max-width:700px){
+  .calGrid{gap:3px}
+  .calDia{min-height:90px;padding:4px}
+  .calServico{font-size:0.65em;padding:3px 4px}
+  .numeroDia{width:20px;height:20px;font-size:0.8em}
+  .calDiaSemana{font-size:0.7em;padding:4px 1px}
+}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-box">
+    <input type="text" id="user" placeholder="Usuário">
+    <input type="password" id="pass" placeholder="Senha">
+    <button id="btnLogin">Entrar</button>
+  </div>
+</div>
+
+<div id="app">
+  <h1>Agenda de Equipes</h1>
+  <div class="topo">
+    <input type="month" id="mesSelecionado">
+    <button id="btnSalvar">💾 Salvar</button>
+    <button id="btnEquipes">📊 Equipes</button>
+    <button id="btnMedicoes">📋 Medições</button>
+    <button id="btnVendedores">🧑‍💼 Vendedores</button>
+    <button id="btnLimpar">🗑️ Limpar</button>
+    <button id="btnCalendario">📅 Calendário Mensal</button>
+  </div>
+  <div id="agenda"></div>
+</div>
+
+<div id="calendarioModal">
+  <div id="calendarioBox">
+    <button class="fecharBtn" id="btnFecharCalendario">✕</button>
+    <div id="calendarioConteudo"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+
+const firebaseConfig={
+  apiKey:"AIzaSyAGDQgG8ncmQGCA1XwlCoArX_XXlxkgpjk",
+  authDomain:"agenda-tubogas.firebaseapp.com",
+  databaseURL:"https://agenda-tubogas-default-rtdb.firebaseio.com",
+  projectId:"agenda-tubogas",
+  storageBucket:"agenda-tubogas.firebasestorage.app",
+  messagingSenderId:"693390772902",
+  appId:"1:693390772902:web:bbbd3b65067ae51a214267"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+const mesSel=document.getElementById("mesSelecionado");
+const agenda=document.getElementById("agenda");
+
+
+
+// LOGIN
+document.getElementById("btnLogin").onclick=()=>{
+  let u=document.getElementById("user").value.trim().toLowerCase();
+  let p=document.getElementById("pass").value.trim();
+  if(u==="1") u="administrador";
+  if(u==="administrador"&&p==="0502"){
+    document.getElementById("login").style.display="none";
+    document.getElementById("app").style.display="block";
+  } else alert("Login inválido");
+};
+document.getElementById("pass").addEventListener("keypress",e=>{
+  if(e.key==="Enter") document.getElementById("btnLogin").click();
+});
+
+const nomes=["Rodrigo","Jocimar","Maicon","Roberto","Robson","João","Ricardo","Equipe 8"];
+const vendedores=["Dyego","Edenilson","Deivid"];
+const coresEquipe=["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316"];
+const nomeMes=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const nomeDiaSem=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const mesesPt=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+
+let calCache=[], calBloco=0, calAno, calMes;
+
+function formatarData(d){
+  return `${String(d.getDate()).padStart(2,'0')} de ${mesesPt[d.getMonth()]} de ${d.getFullYear()}`;
+}
+function aplicarCor(el,s){
+  el.classList.remove("pendente","andamento","concluido");
+  if(s==="Pendente") el.classList.add("pendente");
+  if(s==="Em andamento") el.classList.add("andamento");
+  if(s==="Concluído") el.classList.add("concluido");
+}
+function adicionarServico(container,dados=null){
+  let box=document.createElement("div");
+  box.className="servico";
+  let inp=document.createElement("input");
+  inp.value=dados?.texto||"";
+  let sel=document.createElement("select");
+  ["Pendente","Em andamento","Concluído"].forEach(s=>{
+    let o=document.createElement("option");
+    o.value=s;o.textContent=s;
+    if(dados&&dados.status===s)o.selected=true;
+    sel.appendChild(o);
+  });
+  let chk=document.createElement("input");
+  chk.type="checkbox";chk.checked=dados?.medicao||false;
+  let vend=document.createElement("select");
+  vendedores.forEach(v=>{
+    let o=document.createElement("option");
+    o.value=v;o.textContent=v;
+    if(dados&&dados.vendedor===v)o.selected=true;
+    vend.appendChild(o);
+  });
+  let del=document.createElement("button");
+  del.textContent="X";del.onclick=()=>box.remove();
+  sel.onchange=()=>aplicarCor(box,sel.value);
+  aplicarCor(box,sel.value);
+  box.append(inp,sel,chk,vend,del);
+  container.appendChild(box);
+}
+
+function gerarAgenda(){
+  agenda.innerHTML="";
+  let [ano,mes]=mesSel.value.split("-");
+  let data=new Date(ano,mes-1,1);
+  while(data.getMonth()==(mes-1)){
+    if(data.getDay()>=1&&data.getDay()<=5){
+      let dia=document.createElement("div");
+      dia.className="dia";
+      dia.innerHTML=`<strong>${formatarData(data)}</strong>`;
+      nomes.forEach(nome=>{
+        let eq=document.createElement("div");eq.className="equipe";
+        let tit=document.createElement("div");tit.textContent=nome;
+        let cont=document.createElement("div");
+        let btn=document.createElement("button");btn.textContent="+";
+        btn.onclick=()=>adicionarServico(cont);
+        eq.append(tit,cont,btn);dia.appendChild(eq);
+      });
+      agenda.appendChild(dia);
+    }
+    data.setDate(data.getDate()+1);
+  }
+}
+
+// ===== CALENDÁRIO 2 SEMANAS =====
+function mostrarCalendario(){
+  const [ano,mes]=mesSel.value.split("-").map(Number);
+  calAno=ano; calMes=mes; calBloco=0;
+  document.getElementById("calendarioModal").style.display="block";
+  document.getElementById("calendarioConteudo").innerHTML=
+    "<p style='text-align:center;color:#64748b;padding:30px'>Carregando...</p>";
+  db.ref("agenda/"+mesSel.value).once("value").then(snap=>{
+    calCache=snap.val()||[];
+    renderCalendario();
+  });
+}
+
+function renderCalendario(){
+  const conteudo=document.getElementById("calendarioConteudo");
+  conteudo.innerHTML="";
+
+  const totalDias=new Date(calAno,calMes,0).getDate();
+  const inicio=calBloco*14+1;
+  const fim=Math.min(inicio+13,totalDias);
+  const dtInicio=new Date(calAno,calMes-1,inicio);
+
+  // Header
+  let hdr=document.createElement("div");
+  hdr.className="calHeader";
+  hdr.textContent=`📅 ${nomeMes[calMes-1]} ${calAno}`;
+  conteudo.appendChild(hdr);
+
+  // Legenda
+  let leg=document.createElement("div");
+  leg.className="calLegenda";
+  nomes.forEach((n,i)=>{
+    let item=document.createElement("div");item.className="calLegendaItem";
+    let cor=document.createElement("div");cor.className="calLegendaColor";cor.style.background=coresEquipe[i];
+    let lbl=document.createElement("span");lbl.textContent=n;
+    item.append(cor,lbl);leg.appendChild(item);
+  });
+  conteudo.appendChild(leg);
+
+  // Navegação
+  let nav=document.createElement("div");nav.className="calNav";
+  let btnAnt=document.createElement("button");
+  btnAnt.innerHTML="&#9664; Anterior";
+  btnAnt.disabled=(calBloco===0);
+  btnAnt.onclick=()=>{calBloco--;renderCalendario();};
+  let lbl=document.createElement("div");lbl.className="calNavLabel";
+  lbl.textContent=`Dias ${inicio} – ${fim} de ${totalDias}`;
+  let btnProx=document.createElement("button");
+  btnProx.innerHTML="Próximo &#9654;";
+  btnProx.disabled=(fim>=totalDias);
+  btnProx.onclick=()=>{calBloco++;renderCalendario();};
+  nav.append(btnAnt,lbl,btnProx);
+  conteudo.appendChild(nav);
+
+  // Grade
+  let grid=document.createElement("div");grid.className="calGrid";
+
+  // Cabeçalho semana
+  nomeDiaSem.forEach(d=>{
+    let h=document.createElement("div");h.className="calDiaSemana";h.textContent=d;grid.appendChild(h);
+  });
+
+  // Células vazias para alinhar
+  let offset=dtInicio.getDay();
+  for(let i=0;i<offset;i++){
+    grid.appendChild(document.createElement("div"));
+  }
+
+  // Hoje
+  const hoje=new Date();
+  const hojeStr=formatarData(hoje);
+
+  // Dias
+  for(let dia=inicio;dia<=fim;dia++){
+    let dt=new Date(calAno,calMes-1,dia);
+    let ds=dt.getDay();
+    let dtFmt=formatarData(dt);
+
+    let cell=document.createElement("div");cell.className="calDia";
+    if(ds===0||ds===6)cell.classList.add("fimSemana");
+    if(dtFmt===hojeStr)cell.classList.add("hoje");
+
+    // Número + dia semana
+    let numDiv=document.createElement("div");numDiv.className="calNumDia";
+    let num=document.createElement("div");num.className="numeroDia";num.textContent=dia;
+    let ndw=document.createElement("div");ndw.className="nomeDiaSemana";ndw.textContent=nomeDiaSem[ds];
+    numDiv.append(num,ndw);cell.appendChild(numDiv);
+
+    // Serviços
+    let srvsDiv=document.createElement("div");srvsDiv.className="calServicos";
+    let srvsDia=Array.isArray(calCache)?calCache.filter(s=>s.data===dtFmt):[];
+
+    if(srvsDia.length===0){
+      let vz=document.createElement("div");vz.className="calVazio";vz.textContent="Sem serviços";
+      srvsDiv.appendChild(vz);
+    } else {
+      srvsDia.forEach(srv=>{
+        let idx=nomes.indexOf(srv.equipe);if(idx<0)idx=0;
+        let sDiv=document.createElement("div");
+        sDiv.className=`calServico eq-${idx}`;
+        if(idx===2)sDiv.classList.add("textoDark");
+
+        let eqEl=document.createElement("div");eqEl.className="calServicoEquipe";eqEl.textContent=srv.equipe;
+        let txEl=document.createElement("div");txEl.className="calServicoTexto";txEl.textContent=srv.texto;
+        let inEl=document.createElement("div");inEl.className="calServicoInfo";
+        let badge=document.createElement("span");badge.className="statusBadge";badge.textContent=srv.status;
+        let vt=document.createTextNode(` · ${srv.vendedor}${srv.medicao?' 📏':''}`);
+        inEl.append(badge,vt);
+        sDiv.append(eqEl,txEl,inEl);
+        srvsDiv.appendChild(sDiv);
+      });
+    }
+    cell.appendChild(srvsDiv);
+    grid.appendChild(cell);
+  }
+  conteudo.appendChild(grid);
+  document.getElementById("calendarioModal").scrollTop=0;
+}
+
+function fecharCalendario(){
+  document.getElementById("calendarioModal").style.display="none";
+}
+document.getElementById("btnFecharCalendario").onclick=fecharCalendario;
+document.getElementById("calendarioModal").addEventListener("click",function(e){
+  if(e.target===this)fecharCalendario();
+});
+
+// SALVAR
+function salvarTudo(){
+  let mes=mesSel.value,dados=[];
+  document.querySelectorAll(".dia").forEach(dia=>{
+    let data=dia.querySelector("strong").textContent;
+    dia.querySelectorAll(".equipe").forEach(eq=>{
+      let nome=eq.children[0].textContent;
+      eq.querySelectorAll(".servico").forEach(s=>{
+        let texto=s.children[0].value;if(!texto)return;
+        dados.push({data,equipe:nome,texto,status:s.children[1].value,
+          medicao:s.children[2].checked,vendedor:s.children[3].value});
+      });
+    });
+  });
+  db.ref("agenda/"+mes).set(dados)
+    .then(()=>alert("☁️ Salvo na nuvem!"))
+    .catch(()=>alert("Erro ao salvar"));
+}
+
+// CARREGAR
+let refAtual=null;
+function escutarDados(){
+  let mes=mesSel.value;
+  if(refAtual)refAtual.off();
+  refAtual=db.ref("agenda/"+mes);
+  refAtual.on("value",snap=>{
+    let dados=snap.val();
+    document.querySelectorAll(".servico").forEach(e=>e.remove());
+    if(!dados)return;
+    dados.forEach(item=>{
+      document.querySelectorAll(".dia").forEach(dia=>{
+        if(dia.querySelector("strong").textContent===item.data){
+          dia.querySelectorAll(".equipe").forEach(eq=>{
+            if(eq.children[0].textContent===item.equipe)
+              adicionarServico(eq.children[1],item);
+          });
+        }
+      });
+    });
+  });
+}
+
+// RELATÓRIOS
+function relatorioEquipes(){
+  let cont={};
+  document.querySelectorAll(".equipe").forEach(eq=>{
+    let n=eq.children[0].textContent;
+    eq.querySelectorAll(".servico").forEach(s=>{
+      let st=s.children[1].value;
+      if(!cont[n])cont[n]={total:0,concluidos:0};
+      cont[n].total++;if(st==="Concluído")cont[n].concluidos++;
+    });
+  });
+  let txt="📊 RELATÓRIO DE EQUIPES\n\n";
+  for(let n in cont){
+    let t=cont[n].total,c=cont[n].concluidos;
+    txt+=`${n}\nTotal: ${t}\nConcluídos: ${c}\n${t?Math.round(c/t*100):0}%\n\n`;
+  }
+  alert(txt);
+}
+function relatorioMedicoes(){
+  let txt="📋 RELATÓRIO DE MEDIÇÕES\n\n";
+  document.querySelectorAll(".equipe").forEach(eq=>{
+    let eq_=eq.children[0].textContent;
+    eq.querySelectorAll(".servico").forEach(s=>{
+      if(s.children[2].checked)
+        txt+=`Equipe: ${eq_}\nServiço: ${s.children[0].value}\nVendedor: ${s.children[3].value}\n\n`;
+    });
+  });
+  if(txt==="📋 RELATÓRIO DE MEDIÇÕES\n\n")txt+="Nenhuma medição marcada.";
+  alert(txt);
+}
+function relatorioVendedores(){
+  let cont={};
+  document.querySelectorAll(".servico").forEach(s=>{
+    let v=s.children[3].value;if(!v)return;
+    cont[v]=(cont[v]||0)+1;
+  });
+  let txt="🧑‍💼 RELATÓRIO DE VENDEDORES\n\n";
+  for(let v in cont)txt+=`${v}: ${cont[v]} serviços\n`;
+  if(!Object.keys(cont).length)txt+="Nenhum serviço encontrado.";
+  alert(txt);
+}
+function limparTudo(){
+  if(confirm("Apagar tudo?"))db.ref("agenda/"+mesSel.value).set([]);
+}
+
+// VINCULAR BOTÕES
+document.getElementById("btnSalvar").onclick=salvarTudo;
+document.getElementById("btnEquipes").onclick=relatorioEquipes;
+document.getElementById("btnMedicoes").onclick=relatorioMedicoes;
+document.getElementById("btnVendedores").onclick=relatorioVendedores;
+document.getElementById("btnLimpar").onclick=limparTudo;
+document.getElementById("btnCalendario").onclick=mostrarCalendario;
+
+// START
+let hj=new Date();
+mesSel.value=hj.getFullYear()+"-"+String(hj.getMonth()+1).padStart(2,'0');
+mesSel.onchange=()=>{gerarAgenda();escutarDados();};
+gerarAgenda();
+escutarDados();
+
+});
+</script>
+</body>
+</html>
